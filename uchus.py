@@ -51,7 +51,7 @@ async def cmd_start(message: types.Message):
 async def cancel_current_state(message: types.Message, state: FSMContext):
     logger.info(f"Команда {message.text} получена, завершаем текущее состояние")
     await state.finish()
-    await message.reply("Завершаем текущее состояние...", reply_markup=empty_keyboard)
+    await message.reply(".", reply_markup=empty_keyboard)  # скрываем клавиатуру
 
     # Выполнение соответствующей команды после завершения состояния
     if message.text == "/ask_ai":
