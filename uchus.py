@@ -1,5 +1,4 @@
 import logging
-import requests
 import asyncio
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
@@ -218,28 +217,31 @@ async def handle_generate_photo(update: Update, context: CallbackContext) -> Non
     await update.message.reply_text("Введите описание для генерации черно-белого изображения")
 
 async def main() -> None:
+    application = Application.builder().token(TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("ask_speaker", ask_speaker))
+    application.add_handler(CommandHandler("ask_helper", ask_helper))
+    application.add_handler(CommandHandler("generate_image", generate_image))
+    application.add_handler(CommandHandler("ask_ai", handle_ai))
+    application.add_handler(CommandHandler("generate_photo", handle_generate_photo))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
     while True:
         try:
-            application = Application.builder().token(TOKEN).build()
-
-            application.add_handler(CommandHandler("start", start))
-            application.add_handler(CommandHandler("ask_speaker", ask_speaker))
-            application.add_handler(CommandHandler("ask_helper", ask_helper))
-            application.add_handler(CommandHandler("generate_image", generate_image))
-            application.add_handler(CommandHandler("ask_ai", handle_ai))
-            application.add_handler(CommandHandler("generate_photo", handle_generate_photo))
-            application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
             await application.initialize()
             print("Бот успешно запущен!")
             await application.start()
-            await application.run_polling()
+            await application.run_polling(allowed_updates=Update.ALL_TYPES)
         except (TimedOut, NetworkError) as e:
             print(f"Произошла сетевая ошибка: {e}. Повторная попытка через 10 секунд...")
             await asyncio.sleep(10)
         except Exception as e:
             print(f"Произошла ошибка: {e}. Перезапуск бота через 30 секунд...")
             await asyncio.sleep(30)
+        finally:
+            await application.stop()
+            await application.shutdown()
 
 if __name__ == '__main__':
     asyncio.run(main())
