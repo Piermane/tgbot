@@ -41,15 +41,18 @@ hall_keyboard.row(KeyboardButton("Зал 3"), KeyboardButton("Зал 4"))
 
 @dp.message_handler(commands=['start'])
 async def cmd_start(message: types.Message):
+    logger.info(f"Получена команда /start от {message.from_user.id}")
     await message.reply("Привет! Это бот конференции. Выберите действие:", reply_markup=main_keyboard)
 
 @dp.message_handler(lambda message: message.text == "Задать вопрос спикеру")
 async def ask_speaker(message: types.Message):
+    logger.info(f"Получена команда 'Задать вопрос спикеру' от {message.from_user.id}")
     await message.reply("Выберите зал, в котором вы находитесь:", reply_markup=hall_keyboard)
     await BotStates.WAITING_FOR_HALL.set()
 
 @dp.message_handler(state=BotStates.WAITING_FOR_HALL)
 async def process_hall_selection(message: types.Message, state: FSMContext):
+    logger.info(f"Пользователь {message.from_user.id} выбрал зал: {message.text}")
     if message.text in ["Зал 1", "Зал 2", "Зал 3", "Зал 4"]:
         await state.update_data(selected_hall=message.text)
         await message.reply(f"Вы выбрали {message.text}. Теперь введите ваш вопрос для спикера:")
@@ -59,6 +62,7 @@ async def process_hall_selection(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=BotStates.WAITING_FOR_SPEAKER_QUESTION)
 async def send_question_to_django(message: types.Message, state: FSMContext):
+    logger.info(f"Пользователь {message.from_user.id} задал вопрос: {message.text}")
     user_data = await state.get_data()
     hall = user_data.get('selected_hall')
     
@@ -87,11 +91,13 @@ async def send_question_to_django(message: types.Message, state: FSMContext):
 
 @dp.message_handler(lambda message: message.text == "Задать вопрос помощнику")
 async def ask_ai(message: types.Message):
+    logger.info(f"Получена команда 'Задать вопрос помощнику' от {message.from_user.id}")
     await message.reply("Введите свой вопрос для помощника (ИИ)")
     await BotStates.WAITING_FOR_AI_QUESTION.set()
 
 @dp.message_handler(state=BotStates.WAITING_FOR_AI_QUESTION)
 async def handle_ai_response(message: types.Message, state: FSMContext):
+    logger.info(f"Пользователь {message.from_user.id} задал вопрос ИИ: {message.text}")
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
@@ -129,11 +135,13 @@ async def handle_ai_response(message: types.Message, state: FSMContext):
 
 @dp.message_handler(lambda message: message.text == "Генерировать черно-белое изображение")
 async def generate_image_prompt(message: types.Message):
+    logger.info(f"Получена команда 'Генерировать черно-белое изображение' от {message.from_user.id}")
     await message.reply("Введите описание для генерации черно-белого изображения")
     await BotStates.WAITING_FOR_IMAGE_PROMPT.set()
 
 @dp.message_handler(state=BotStates.WAITING_FOR_IMAGE_PROMPT)
 async def handle_image_generation(message: types.Message, state: FSMContext):
+    logger.info(f"Пользователь {message.from_user.id} запросил генерацию изображения: {message.text}")
     waiting_message = await message.reply("Пожалуйста, подождите. Изображение генерится...")
 
     url = "https://api.openai.com/v1/images/generations"
@@ -170,6 +178,7 @@ async def handle_image_generation(message: types.Message, state: FSMContext):
 
 @dp.message_handler(lambda message: message.text == "Играть в игру")
 async def play_game(message: types.Message):
+    logger.info(f"Получена команда 'Играть в игру' от {message.from_user.id}")
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("Играть в Skipper", url=GAME_URL))
     await message.reply("Нажмите кнопку ниже, чтобы играть в игру:", reply_markup=keyboard)
