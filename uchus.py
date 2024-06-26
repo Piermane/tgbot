@@ -7,7 +7,6 @@ from telegram.error import TimedOut, NetworkError, RetryAfter
 import aiohttp
 
 import os
-import time
 
 TOKEN = os.getenv('TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -192,10 +191,8 @@ async def handle_image_generation(update: Update, context: CallbackContext) -> N
 
 async def return_to_main_menu(update: Update, context: CallbackContext) -> None:
     keyboard = [
-        [KeyboardButton("Задать вопрос спикеру")],
-        [KeyboardButton("Задать вопрос помощнику")],
-        [KeyboardButton("Генерировать черно-белое изображение")],
-        [KeyboardButton("Играть в игру")]
+        [KeyboardButton("Задать вопрос спикеру"), KeyboardButton("Задать вопрос помощнику")],
+        [KeyboardButton("Генерировать черно-белое изображение"), KeyboardButton("Играть в игру")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text("Выберите следующее действие:", reply_markup=reply_markup)
@@ -205,46 +202,23 @@ async def error_handler(update: object, context: CallbackContext) -> None:
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
 
 async def main() -> None:
-    retry_count = 0
-    max_retries = 5
-    retry_delay = 10
+    application = Application.builder().token(TOKEN).build()
 
-    while retry_count < max_retries:
-        try:
-            application = Application.builder().token(TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("ask_speaker", ask_speaker))
+    application.add_handler(CommandHandler("ask_helper", handle_ai_response))
+    application.add_handler(CommandHandler("generate_image", handle_image_generation))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-            application.add_handler(CommandHandler("start", start))
-            application.add_handler(CommandHandler("ask_speaker", ask_speaker))
-            application.add_handler(CommandHandler("ask_helper", handle_ai_response))
-            application.add_handler(CommandHandler("generate_image", handle_image_generation))
-            application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_error_handler(error_handler)
 
-            application.add_error_handler(error_handler)
-
-            # Запускаем бот
-            await application.initialize()
-            await application.start()
-            logger.info("Бот успешно запущен")
-            
-            # Запускаем поллинг в бесконечном цикле
-            while True:
-                try:
-                    await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
-                except Exception as e:
-                    logger.error(f"Ошибка при поллинге: {e}")
-                    await asyncio.sleep(5)  # Небольшая пауза перед следующей попыткой
-            
-        except (TimedOut, NetworkError) as e:
-            retry_count += 1
-            logger.error(f"Ошибка подключения: {e}. Попытка {retry_count} из {max_retries}")
-            if retry_count < max_retries:
-                logger.info(f"Повторная попытка через {retry_delay} секунд...")
-                await asyncio.sleep(retry_delay)
-            else:
-                logger.error("Достигнуто максимальное количество попыток. Бот не может запуститься.")
-        except Exception as e:
-            logger.exception(f"Критическая ошибка: {e}")
-            break
+    # Запускаем бот
+    await application.initialize()
+    await application.start()
+    logger.info("Бот успешно запущен")
+    
+    # Запускаем поллинг
+    await application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     asyncio.run(main())
