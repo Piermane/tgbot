@@ -3,7 +3,7 @@ import asyncio
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 from telegram.error import TimedOut, NetworkError, RetryAfter
-import httpx
+
 import aiohttp
 
 import os
@@ -202,37 +202,23 @@ async def error_handler(update: object, context: CallbackContext) -> None:
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
 
 async def main() -> None:
-    # Создаем клиент httpx с увеличенным таймаутом
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        # Создаем приложение с использованием нашего клиента
-        application = (
-            Application.builder()
-            .token(TOKEN)
-            .http_version("1.1")  # Используем HTTP/1.1
-            .get_updates_http_version("1.1")  # Используем HTTP/1.1 для получения обновлений
-            .build()
-        )
+    application = Application.builder().token(TOKEN).build()
 
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CommandHandler("ask_speaker", ask_speaker))
-        application.add_handler(CommandHandler("ask_helper", handle_ai_response))
-        application.add_handler(CommandHandler("generate_image", handle_image_generation))
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("ask_speaker", ask_speaker))
+    application.add_handler(CommandHandler("ask_helper", handle_ai_response))
+    application.add_handler(CommandHandler("generate_image", handle_image_generation))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-        application.add_error_handler(error_handler)
+    application.add_error_handler(error_handler)
 
-        # Запускаем бот
-        await application.initialize()
-        await application.start()
-        logger.info("Бот успешно запущен")
-        
-        # Запускаем поллинг с обработкой ошибок
-        while True:
-            try:
-                await application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
-            except Exception as e:
-                logger.error(f"Ошибка при выполнении поллинга: {e}")
-                await asyncio.sleep(5)  # Ждем 5 секунд перед повторной попыткой
+    # Запускаем бот
+    await application.initialize()
+    await application.start()
+    logger.info("Бот успешно запущен")
+    
+    # Запускаем поллинг
+    await application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     asyncio.run(main())
