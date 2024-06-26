@@ -1,7 +1,9 @@
 import logging
 import requests
+import asyncio
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
+from telegram.error import TimedOut, NetworkError
 
 import aiohttp
 
@@ -85,19 +87,20 @@ async def send_question_to_django(update: Update, context: CallbackContext) -> N
 
     # Отправка вопроса на сервер Django
     try:
-        response = requests.post('http://127.0.0.1:8000/api/questions/', json={
-            'name': name,
-            'questions': user_message,
-            'hall': hall
-        })
-        response.raise_for_status()  # Вызовет исключение для неуспешных статус-кодов
+        async with aiohttp.ClientSession() as session:
+            async with session.post('http://127.0.0.1:8000/api/questions/', json={
+                'name': name,
+                'questions': user_message,
+                'hall': hall
+            }) as response:
+                response.raise_for_status()  # Вызовет исключение для неуспешных статус-кодов
+                await update.message.reply_text(
+                    f"Спасибо за вопрос. Спикер ответит на него в конце выступления."
+                )
+    except aiohttp.ClientError as e:
+        logger.error(f"Ошибка при отправке вопроса на Django: {e}")
         await update.message.reply_text(
-            f"Спасибо за вопрос. Спикер ответит на него в конце выступления."
-        )
-    except requests.RequestException as e:
-        logger.error(f"Ошибка при отправке вопроса на Django: {e}, Response: {e.response.text}")
-        await update.message.reply_text(
-            f"Произошла ошибка при отправке вашего вопроса. Пожалуйста, попробуйте еще раз позже. Ошибка: {e.response.text}"
+            f"Произошла ошибка при отправке вашего вопроса. Пожалуйста, попробуйте еще раз позже."
         )
 
     # Возвращаем клавиатуру с основными опциями
@@ -140,9 +143,9 @@ async def handle_ai_response(update: Update, context: CallbackContext) -> None:
             else:
                 raise ValueError(f"Unexpected response format: {result}")
     except (aiohttp.ClientError, ValueError) as e:
-        logger.error(f"Ошибка при получении ответа от ИИ: {e}, Payload: {payload}, Response: {await response.text()}")
+        logger.error(f"Ошибка при получении ответа от ИИ: {e}")
         await update.message.reply_text(
-            f"Извините, произошла ошибка при получении ответа от ИИ. Попробуйте еще раз позже. Ошибка: {e}"
+            f"Извините, произошла ошибка при получении ответа от ИИ. Попробуйте еще раз позже."
         )
 
     # Возвращаем клавиатуру с основными опциями
@@ -184,9 +187,9 @@ async def handle_image_generation(update: Update, context: CallbackContext) -> N
             else:
                 raise ValueError(f"Unexpected response format: {result}")
     except (aiohttp.ClientError, ValueError) as e:
-        logger.error(f"Ошибка при получении изображения: {e}, Payload: {payload}, Response: {await response.text()}")
+        logger.error(f"Ошибка при получении изображения: {e}")
         await update.message.reply_text(
-            f"Извините, произошла ошибка при получении изображения. Попробуйте еще раз позже. Ошибка: {e}"
+            f"Извините, произошла ошибка при получении изображения. Попробуйте еще раз позже."
         )
 
     # Удаляем сообщение об ожидании
@@ -214,18 +217,29 @@ async def handle_generate_photo(update: Update, context: CallbackContext) -> Non
     context.user_data['state'] = 'waiting_for_image_prompt'
     await update.message.reply_text("Введите описание для генерации черно-белого изображения")
 
-def main() -> None:
-    application = Application.builder().token(TOKEN).build()
+async def main() -> None:
+    while True:
+        try:
+            application = Application.builder().token(TOKEN).build()
 
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("ask_speaker", ask_speaker))
-    application.add_handler(CommandHandler("ask_helper", ask_helper))
-    application.add_handler(CommandHandler("generate_image", generate_image))
-    application.add_handler(CommandHandler("ask_ai", handle_ai))
-    application.add_handler(CommandHandler("generate_photo", handle_generate_photo))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+            application.add_handler(CommandHandler("start", start))
+            application.add_handler(CommandHandler("ask_speaker", ask_speaker))
+            application.add_handler(CommandHandler("ask_helper", ask_helper))
+            application.add_handler(CommandHandler("generate_image", generate_image))
+            application.add_handler(CommandHandler("ask_ai", handle_ai))
+            application.add_handler(CommandHandler("generate_photo", handle_generate_photo))
+            application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    application.run_polling()
+            await application.initialize()
+            print("Бот успешно запущен!")
+            await application.start()
+            await application.run_polling()
+        except (TimedOut, NetworkError) as e:
+            print(f"Произошла сетевая ошибка: {e}. Повторная попытка через 10 секунд...")
+            await asyncio.sleep(10)
+        except Exception as e:
+            print(f"Произошла ошибка: {e}. Перезапуск бота через 30 секунд...")
+            await asyncio.sleep(30)
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())

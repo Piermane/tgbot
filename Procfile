@@ -1,1 +1,1 @@
-worker: python uchus.py
+worker: python3 uchus.py
