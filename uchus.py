@@ -7,6 +7,7 @@ from telegram.error import TimedOut, NetworkError
 import aiohttp
 
 import os
+from functools import partial
 
 TOKEN = os.getenv('TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -216,6 +217,9 @@ async def handle_generate_photo(update: Update, context: CallbackContext) -> Non
     context.user_data['state'] = 'waiting_for_image_prompt'
     await update.message.reply_text("Введите описание для генерации черно-белого изображения")
 
+async def error_handler(update: object, context: CallbackContext) -> None:
+    logger.error(msg="Exception while handling an update:", exc_info=context.error)
+
 async def main() -> None:
     application = Application.builder().token(TOKEN).build()
 
@@ -227,25 +231,16 @@ async def main() -> None:
     application.add_handler(CommandHandler("generate_photo", handle_generate_photo))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    while True:
-        try:
-            await application.initialize()
-            print("Бот успешно запущен!")
-            await application.start()
-            await application.run_polling(allowed_updates=Update.ALL_TYPES)
-        except (TimedOut, NetworkError) as e:
-            print(f"Произошла сетевая ошибка: {e}. Повторная попытка через 10 секунд...")
-            await asyncio.sleep(10)
-        except Exception as e:
-            print(f"Произошла ошибка: {e}. Перезапуск бота через 30 секунд...")
-            await asyncio.sleep(30)
-        finally:
-            try:
-                print("Останавливаем бота...")
-                await application.stop()
-                await application.shutdown()
-            except Exception as e:
-                print(f"Ошибка при остановке бота: {e}")
+    application.add_error_handler(error_handler)
+
+    await application.initialize()
+    await application.start()
+    await application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        pass  # Позволяет корректно завершить программу при нажатии Ctrl+C
+    except Exception as e:
+        logger.exception(f"Критическая ошибка: {e}")
