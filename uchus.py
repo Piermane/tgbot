@@ -2,10 +2,12 @@ import logging
 import asyncio
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
+from telegram.error import TimedOut, NetworkError, RetryAfter
 
 import aiohttp
 
 import os
+import time
 
 TOKEN = os.getenv('TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -203,21 +205,39 @@ async def error_handler(update: object, context: CallbackContext) -> None:
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
 
 async def main() -> None:
-    application = Application.builder().token(TOKEN).build()
+    retry_count = 0
+    max_retries = 5
+    retry_delay = 10
 
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("ask_speaker", ask_speaker))
-    application.add_handler(CommandHandler("ask_helper", handle_ai_response))
-    application.add_handler(CommandHandler("generate_image", handle_image_generation))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    while retry_count < max_retries:
+        try:
+            application = Application.builder().token(TOKEN).build()
 
-    application.add_error_handler(error_handler)
+            application.add_handler(CommandHandler("start", start))
+            application.add_handler(CommandHandler("ask_speaker", ask_speaker))
+            application.add_handler(CommandHandler("ask_helper", handle_ai_response))
+            application.add_handler(CommandHandler("generate_image", handle_image_generation))
+            application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Запускаем бот
-    await application.initialize()
-    await application.start()
-    logger.info("Бот запущен")
-    await application.run_polling(allowed_updates=Update.ALL_TYPES)
+            application.add_error_handler(error_handler)
+
+            # Запускаем бот
+            await application.initialize()
+            await application.start()
+            logger.info("Бот успешно запущен")
+            await application.run_polling(allowed_updates=Update.ALL_TYPES)
+            break  # Если успешно запустился, выходим из цикла
+        except (TimedOut, NetworkError) as e:
+            retry_count += 1
+            logger.error(f"Ошибка подключения: {e}. Попытка {retry_count} из {max_retries}")
+            if retry_count < max_retries:
+                logger.info(f"Повторная попытка через {retry_delay} секунд...")
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error("Достигнуто максимальное количество попыток. Бот не может запуститься.")
+        except Exception as e:
+            logger.exception(f"Критическая ошибка: {e}")
+            break
 
 if __name__ == '__main__':
     asyncio.run(main())
