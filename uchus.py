@@ -45,18 +45,21 @@ async def cmd_start(message: types.Message):
     await message.reply("Привет! Это бот конференции. Выберите действие:", reply_markup=main_keyboard)
 
 @dp.message_handler(commands=['ask_ai'])
-async def ask_ai_command(message: types.Message):
+async def ask_ai_command(message: types.Message, state: FSMContext):
     logger.info(f"Получена команда /ask_ai от {message.from_user.id}")
+    await state.finish()  # Завершаем текущее состояние
     await ask_ai(message)
 
 @dp.message_handler(commands=['ask_speaker'])
-async def ask_speaker_command(message: types.Message):
+async def ask_speaker_command(message: types.Message, state: FSMContext):
     logger.info(f"Получена команда /ask_speaker от {message.from_user.id}")
+    await state.finish()  # Завершаем текущее состояние
     await ask_speaker(message)
 
 @dp.message_handler(commands=['generate_photo'])
-async def generate_photo_command(message: types.Message):
+async def generate_photo_command(message: types.Message, state: FSMContext):
     logger.info(f"Получена команда /generate_photo от {message.from_user.id}")
+    await state.finish()  # Завершаем текущее состояние
     await generate_image_prompt(message)
 
 @dp.message_handler(lambda message: message.text == "Задать вопрос спикеру")
