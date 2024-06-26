@@ -45,10 +45,10 @@ async def cmd_start(message: types.Message):
     await message.reply("Привет! Это бот конференции. Выберите действие:", reply_markup=main_keyboard)
 
 @dp.message_handler(lambda message: message.text in ["Задать вопрос спикеру", "Задать вопрос помощнику", "Генерировать черно-белое изображение", "Играть в игру"], state="*")
-async def cancel_current_state(message: types.Message, state: FSMContext):
+async def handle_menu_commands(message: types.Message, state: FSMContext):
     logger.info(f"Получена команда {message.text}, завершаем текущее состояние")
     await state.finish()
-    await message.reply("Выберите действие:", reply_markup=ReplyKeyboardRemove())  # скрываем клавиатуру
+    await message.reply(reply_markup=ReplyKeyboardRemove())  # скрываем клавиатуру
 
     # Выполнение соответствующей команды после завершения состояния
     if message.text == "Задать вопрос спикеру":
@@ -207,5 +207,5 @@ async def main():
             logger.error(f"Произошла ошибка: {e}. Перезапуск через 5 секунд...")
             await asyncio.sleep(5)
 
-if __name__ == '__main__':
+if __name__ == '__':
     asyncio.run(main())
