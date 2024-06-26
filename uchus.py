@@ -225,8 +225,15 @@ async def main() -> None:
             await application.initialize()
             await application.start()
             logger.info("Бот успешно запущен")
-            await application.run_polling(allowed_updates=Update.ALL_TYPES)
-            break  # Если успешно запустился, выходим из цикла
+            
+            # Запускаем поллинг в бесконечном цикле
+            while True:
+                try:
+                    await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+                except Exception as e:
+                    logger.error(f"Ошибка при поллинге: {e}")
+                    await asyncio.sleep(5)  # Небольшая пауза перед следующей попыткой
+            
         except (TimedOut, NetworkError) as e:
             retry_count += 1
             logger.error(f"Ошибка подключения: {e}. Попытка {retry_count} из {max_retries}")
