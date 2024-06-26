@@ -201,36 +201,30 @@ async def return_to_main_menu(update: Update, context: CallbackContext) -> None:
 async def error_handler(update: object, context: CallbackContext) -> None:
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
 
-async def main() -> None:
+async def run_bot():
+    application = Application.builder().token(TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("ask_speaker", ask_speaker))
+    application.add_handler(CommandHandler("ask_helper", handle_ai_response))
+    application.add_handler(CommandHandler("generate_image", handle_image_generation))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    application.add_error_handler(error_handler)
+
+    await application.initialize()
+    await application.start()
+    logger.info("Бот успешно запущен")
+    
+    await application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+
+def main():
     while True:
         try:
-            application = Application.builder().token(TOKEN).build()
-
-            application.add_handler(CommandHandler("start", start))
-            application.add_handler(CommandHandler("ask_speaker", ask_speaker))
-            application.add_handler(CommandHandler("ask_helper", handle_ai_response))
-            application.add_handler(CommandHandler("generate_image", handle_image_generation))
-            application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-            application.add_error_handler(error_handler)
-
-            # Запускаем бот
-            await application.initialize()
-            await application.start()
-            logger.info("Бот успешно запущен")
-            
-            # Запускаем поллинг
-            await application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True, timeout=30)
+            asyncio.run(run_bot())
         except Exception as e:
             logger.error(f"Произошла ошибка: {e}. Перезапуск через 5 секунд...")
-            await asyncio.sleep(5)
-        finally:
-            try:
-                if application.running:
-                    await application.stop()
-                    await application.shutdown()
-            except Exception as e:
-                logger.error(f"Ошибка при остановке приложения: {e}")
+            asyncio.run(asyncio.sleep(5))
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
