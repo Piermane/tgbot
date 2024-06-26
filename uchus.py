@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
 import aiohttp
 import os
@@ -39,42 +39,26 @@ hall_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 hall_keyboard.row(KeyboardButton("Зал 1"), KeyboardButton("Зал 2"))
 hall_keyboard.row(KeyboardButton("Зал 3"), KeyboardButton("Зал 4"))
 
-# Пустая клавиатура
-empty_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-
 @dp.message_handler(commands=['start'])
 async def cmd_start(message: types.Message):
     logger.info(f"Получена команда /start от {message.from_user.id}")
     await message.reply("Привет! Это бот конференции. Выберите действие:", reply_markup=main_keyboard)
 
-@dp.message_handler(commands=['ask_ai', 'ask_speaker', 'generate_photo'], state="*")
+@dp.message_handler(lambda message: message.text in ["Задать вопрос спикеру", "Задать вопрос помощнику", "Генерировать черно-белое изображение", "Играть в игру"], state="*")
 async def cancel_current_state(message: types.Message, state: FSMContext):
-    logger.info(f"Команда {message.text} получена, завершаем текущее состояние")
+    logger.info(f"Получена команда {message.text}, завершаем текущее состояние")
     await state.finish()
-    await message.reply(".", reply_markup=empty_keyboard)  # скрываем клавиатуру
+    await message.reply("...", reply_markup=ReplyKeyboardRemove())  # скрываем клавиатуру
 
     # Выполнение соответствующей команды после завершения состояния
-    if message.text == "/ask_ai":
-        await ask_ai_command(message, state)
-    elif message.text == "/ask_speaker":
-        await ask_speaker_command(message, state)
-    elif message.text == "/generate_photo":
-        await generate_photo_command(message, state)
-
-@dp.message_handler(commands=['ask_ai'])
-async def ask_ai_command(message: types.Message, state: FSMContext):
-    logger.info(f"Получена команда /ask_ai от {message.from_user.id}")
-    await ask_ai(message, state)
-
-@dp.message_handler(commands=['ask_speaker'])
-async def ask_speaker_command(message: types.Message, state: FSMContext):
-    logger.info(f"Получена команда /ask_speaker от {message.from_user.id}")
-    await ask_speaker(message, state)
-
-@dp.message_handler(commands=['generate_photo'])
-async def generate_photo_command(message: types.Message, state: FSMContext):
-    logger.info(f"Получена команда /generate_photo от {message.from_user.id}")
-    await generate_image_prompt(message, state)
+    if message.text == "Задать вопрос спикеру":
+        await ask_speaker(message, state)
+    elif message.text == "Задать вопрос помощнику":
+        await ask_ai(message, state)
+    elif message.text == "Генерировать черно-белое изображение":
+        await generate_image_prompt(message, state)
+    elif message.text == "Играть в игру":
+        await play_game(message, state)
 
 @dp.message_handler(lambda message: message.text == "Задать вопрос спикеру")
 async def ask_speaker(message: types.Message, state: FSMContext):
@@ -88,7 +72,7 @@ async def process_hall_selection(message: types.Message, state: FSMContext):
     logger.info(f"Пользователь {message.from_user.id} выбрал зал: {message.text}")
     if message.text in ["Зал 1", "Зал 2", "Зал 3", "Зал 4"]:
         await state.update_data(selected_hall=message.text)
-        await message.reply(f"Вы выбрали {message.text}. Теперь введите ваш вопрос для спикера:")
+        await message.reply(f"Вы выбрали {message.text}. Теперь введите ваш вопрос для спикера:", reply_markup=ReplyKeyboardRemove())
         await BotStates.WAITING_FOR_SPEAKER_QUESTION.set()
     else:
         await message.reply("Пожалуйста, выберите зал из предложенных вариантов.")
@@ -126,7 +110,7 @@ async def send_question_to_django(message: types.Message, state: FSMContext):
 async def ask_ai(message: types.Message, state: FSMContext):
     await state.finish()  # Завершаем текущее состояние
     logger.info(f"Получена команда 'Задать вопрос помощнику' от {message.from_user.id}")
-    await message.reply("Введите свой вопрос для помощника (ИИ)", reply_markup=empty_keyboard)
+    await message.reply("Введите свой вопрос для помощника (ИИ)", reply_markup=ReplyKeyboardRemove())
     await BotStates.WAITING_FOR_AI_QUESTION.set()
 
 @dp.message_handler(state=BotStates.WAITING_FOR_AI_QUESTION)
@@ -171,7 +155,7 @@ async def handle_ai_response(message: types.Message, state: FSMContext):
 async def generate_image_prompt(message: types.Message, state: FSMContext):
     await state.finish()  # Завершаем текущее состояние
     logger.info(f"Получена команда 'Генерировать черно-белое изображение' от {message.from_user.id}")
-    await message.reply("Введите описание для генерации черно-белого изображения", reply_markup=empty_keyboard)
+    await message.reply("Введите описание для генерации черно-белого изображения", reply_markup=ReplyKeyboardRemove())
     await BotStates.WAITING_FOR_IMAGE_PROMPT.set()
 
 @dp.message_handler(state=BotStates.WAITING_FOR_IMAGE_PROMPT)
