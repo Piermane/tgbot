@@ -202,36 +202,31 @@ async def error_handler(update: object, context: CallbackContext) -> None:
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
 
 async def main() -> None:
-    max_retries = 5
-    retry_delay = 5
+    application = Application.builder().token(TOKEN).build()
 
-    for attempt in range(max_retries):
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("ask_speaker", ask_speaker))
+    application.add_handler(CommandHandler("ask_helper", handle_ai_response))
+    application.add_handler(CommandHandler("generate_image", handle_image_generation))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    application.add_error_handler(error_handler)
+
+    while True:
         try:
-            application = Application.builder().token(TOKEN).build()
-
-            application.add_handler(CommandHandler("start", start))
-            application.add_handler(CommandHandler("ask_speaker", ask_speaker))
-            application.add_handler(CommandHandler("ask_helper", handle_ai_response))
-            application.add_handler(CommandHandler("generate_image", handle_image_generation))
-            application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-            application.add_error_handler(error_handler)
-
             # Запускаем бот
             await application.initialize()
             await application.start()
             logger.info("Бот успешно запущен")
             
             # Запускаем поллинг
-            await application.run_polling(allowed_updates=Update.ALL_TYPES)
-            break  # Если успешно запустился, выходим из цикла
-        except (TimedOut, NetworkError) as e:
-            if attempt < max_retries - 1:
-                logger.error(f"Попытка {attempt + 1} не удалась: {e}. Повторная попытка через {retry_delay} секунд...")
-                await asyncio.sleep(retry_delay)
-            else:
-                logger.error(f"Не удалось запустить бота после {max_retries} попыток.")
-                raise
+            await application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+        except Exception as e:
+            logger.error(f"Произошла ошибка: {e}. Перезапуск через 5 секунд...")
+            await asyncio.sleep(5)
+        finally:
+            await application.stop()
+            await application.shutdown()
 
 if __name__ == '__main__':
     asyncio.run(main())
