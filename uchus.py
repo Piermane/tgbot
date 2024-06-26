@@ -39,6 +39,9 @@ hall_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 hall_keyboard.row(KeyboardButton("Зал 1"), KeyboardButton("Зал 2"))
 hall_keyboard.row(KeyboardButton("Зал 3"), KeyboardButton("Зал 4"))
 
+# Пустая клавиатура
+empty_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+
 @dp.message_handler(commands=['start'])
 async def cmd_start(message: types.Message):
     logger.info(f"Получена команда /start от {message.from_user.id}")
@@ -48,6 +51,7 @@ async def cmd_start(message: types.Message):
 async def cancel_current_state(message: types.Message, state: FSMContext):
     logger.info(f"Команда {message.text} получена, завершаем текущее состояние")
     await state.finish()
+    await message.reply("Завершаем текущее состояние...", reply_markup=empty_keyboard)
 
     # Выполнение соответствующей команды после завершения состояния
     if message.text == "/ask_ai":
@@ -122,7 +126,7 @@ async def send_question_to_django(message: types.Message, state: FSMContext):
 async def ask_ai(message: types.Message, state: FSMContext):
     await state.finish()  # Завершаем текущее состояние
     logger.info(f"Получена команда 'Задать вопрос помощнику' от {message.from_user.id}")
-    await message.reply("Введите свой вопрос для помощника (ИИ)")
+    await message.reply("Введите свой вопрос для помощника (ИИ)", reply_markup=empty_keyboard)
     await BotStates.WAITING_FOR_AI_QUESTION.set()
 
 @dp.message_handler(state=BotStates.WAITING_FOR_AI_QUESTION)
@@ -167,7 +171,7 @@ async def handle_ai_response(message: types.Message, state: FSMContext):
 async def generate_image_prompt(message: types.Message, state: FSMContext):
     await state.finish()  # Завершаем текущее состояние
     logger.info(f"Получена команда 'Генерировать черно-белое изображение' от {message.from_user.id}")
-    await message.reply("Введите описание для генерации черно-белого изображения")
+    await message.reply("Введите описание для генерации черно-белого изображения", reply_markup=empty_keyboard)
     await BotStates.WAITING_FOR_IMAGE_PROMPT.set()
 
 @dp.message_handler(state=BotStates.WAITING_FOR_IMAGE_PROMPT)
