@@ -44,6 +44,21 @@ async def cmd_start(message: types.Message):
     logger.info(f"Получена команда /start от {message.from_user.id}")
     await message.reply("Привет! Это бот конференции. Выберите действие:", reply_markup=main_keyboard)
 
+@dp.message_handler(commands=['ask_ai'])
+async def ask_ai_command(message: types.Message):
+    logger.info(f"Получена команда /ask_ai от {message.from_user.id}")
+    await ask_ai(message)
+
+@dp.message_handler(commands=['ask_speaker'])
+async def ask_speaker_command(message: types.Message):
+    logger.info(f"Получена команда /ask_speaker от {message.from_user.id}")
+    await ask_speaker(message)
+
+@dp.message_handler(commands=['generate_photo'])
+async def generate_photo_command(message: types.Message):
+    logger.info(f"Получена команда /generate_photo от {message.from_user.id}")
+    await generate_image_prompt(message)
+
 @dp.message_handler(lambda message: message.text == "Задать вопрос спикеру")
 async def ask_speaker(message: types.Message):
     logger.info(f"Получена команда 'Задать вопрос спикеру' от {message.from_user.id}")
