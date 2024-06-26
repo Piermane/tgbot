@@ -31,8 +31,13 @@ class BotStates(StatesGroup):
 
 # Клавиатура главного меню
 main_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-main_keyboard.add(KeyboardButton("Задать вопрос спикеру"), KeyboardButton("Задать вопрос помощнику"))
-main_keyboard.add(KeyboardButton("Генерировать черно-белое изображение"), KeyboardButton("Играть в игру"))
+main_keyboard.row(KeyboardButton("Задать вопрос спикеру"), KeyboardButton("Задать вопрос помощнику"))
+main_keyboard.row(KeyboardButton("Генерировать черно-белое изображение"), KeyboardButton("Играть в игру"))
+
+# Клавиатура выбора зала
+hall_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+hall_keyboard.row(KeyboardButton("Зал 1"), KeyboardButton("Зал 2"))
+hall_keyboard.row(KeyboardButton("Зал 3"), KeyboardButton("Зал 4"))
 
 @dp.message_handler(commands=['start'])
 async def cmd_start(message: types.Message):
@@ -40,11 +45,7 @@ async def cmd_start(message: types.Message):
 
 @dp.message_handler(lambda message: message.text == "Задать вопрос спикеру")
 async def ask_speaker(message: types.Message):
-    halls = ["Зал 1", "Зал 2", "Зал 3", "Зал 4"]
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    for hall in halls:
-        keyboard.add(KeyboardButton(hall))
-    await message.reply("Выберите зал, в котором вы находитесь:", reply_markup=keyboard)
+    await message.reply("Выберите зал, в котором вы находитесь:", reply_markup=hall_keyboard)
     await BotStates.WAITING_FOR_HALL.set()
 
 @dp.message_handler(state=BotStates.WAITING_FOR_HALL)
