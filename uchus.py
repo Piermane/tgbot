@@ -240,8 +240,12 @@ async def main() -> None:
             print(f"Произошла ошибка: {e}. Перезапуск бота через 30 секунд...")
             await asyncio.sleep(30)
         finally:
-            await application.stop()
-            await application.shutdown()
+            try:
+                print("Останавливаем бота...")
+                await application.stop()
+                await application.shutdown()
+            except Exception as e:
+                print(f"Ошибка при остановке бота: {e}")
 
 if __name__ == '__main__':
     asyncio.run(main())
