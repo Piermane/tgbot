@@ -48,7 +48,7 @@ async def cmd_start(message: types.Message):
 async def cancel_current_state(message: types.Message, state: FSMContext):
     logger.info(f"Получена команда {message.text}, завершаем текущее состояние")
     await state.finish()
-    await message.reply("...", reply_markup=ReplyKeyboardRemove())  # скрываем клавиатуру
+    await message.reply(reply_markup=ReplyKeyboardRemove())  # скрываем клавиатуру
 
     # Выполнение соответствующей команды после завершения состояния
     if message.text == "Задать вопрос спикеру":
