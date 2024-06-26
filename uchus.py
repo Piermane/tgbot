@@ -2,7 +2,7 @@ import logging
 import asyncio
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
-from telegram.error import TimedOut, NetworkError
+from telegram.error import TimedOut, NetworkError, RetryAfter
 
 import aiohttp
 
@@ -233,14 +233,28 @@ async def main() -> None:
 
     application.add_error_handler(error_handler)
 
-    await application.initialize()
-    await application.start()
-    await application.run_polling(allowed_updates=Update.ALL_TYPES)
+    while True:
+        try:
+            await application.initialize()
+            await application.start()
+            await application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+        except (TimedOut, NetworkError) as e:
+            logger.error(f"Ошибка сети: {e}. Повторная попытка через 10 секунд...")
+            await asyncio.sleep(10)
+        except RetryAfter as e:
+            logger.error(f"Превышен лимит запросов. Ожидание {e.retry_after} секунд...")
+            await asyncio.sleep(e.retry_after)
+        except Exception as e:
+            logger.exception(f"Критическая ошибка: {e}. Повторная попытка через 30 секунд...")
+            await asyncio.sleep(30)
+        finally:
+            await application.stop()
+            await application.shutdown()
 
 if __name__ == '__main__':
     try:
         asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        pass  # Позволяет корректно завершить программу при нажатии Ctrl+C
+    except KeyboardInterrupt:
+        logger.info("Бот остановлен пользователем")
     except Exception as e:
         logger.exception(f"Критическая ошибка: {e}")
