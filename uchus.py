@@ -2,12 +2,10 @@ import logging
 import asyncio
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
-from telegram.error import TimedOut, NetworkError, RetryAfter
 
 import aiohttp
 
 import os
-from functools import partial
 
 TOKEN = os.getenv('TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -106,10 +104,6 @@ async def send_question_to_django(update: Update, context: CallbackContext) -> N
     # Возвращаем клавиатуру с основными опциями
     await return_to_main_menu(update, context)
 
-async def ask_helper(update: Update, context: CallbackContext) -> None:
-    context.user_data['state'] = 'waiting_for_ai_question'
-    await update.message.reply_text("Введите свой вопрос для помощника (ИИ)")
-
 async def handle_ai_response(update: Update, context: CallbackContext) -> None:
     user_message = update.message.text
 
@@ -150,10 +144,6 @@ async def handle_ai_response(update: Update, context: CallbackContext) -> None:
 
     # Возвращаем клавиатуру с основными опциями
     await return_to_main_menu(update, context)
-
-async def generate_image(update: Update, context: CallbackContext) -> None:
-    context.user_data['state'] = 'waiting_for_image_prompt'
-    await update.message.reply_text("Введите описание для генерации черно-белого изображения")
 
 async def handle_image_generation(update: Update, context: CallbackContext) -> None:
     user_message = update.message.text
@@ -209,14 +199,6 @@ async def return_to_main_menu(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text("Выберите следующее действие:", reply_markup=reply_markup)
     context.user_data.clear()  # Очищаем данные пользователя при возврате в главное меню
 
-async def handle_ai(update: Update, context: CallbackContext) -> None:
-    context.user_data['state'] = 'waiting_for_ai_question'
-    await update.message.reply_text("Введите свой вопрос для помощника (ИИ)")
-
-async def handle_generate_photo(update: Update, context: CallbackContext) -> None:
-    context.user_data['state'] = 'waiting_for_image_prompt'
-    await update.message.reply_text("Введите описание для генерации черно-белого изображения")
-
 async def error_handler(update: object, context: CallbackContext) -> None:
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
 
@@ -225,43 +207,17 @@ async def main() -> None:
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("ask_speaker", ask_speaker))
-    application.add_handler(CommandHandler("ask_helper", ask_helper))
-    application.add_handler(CommandHandler("generate_image", generate_image))
-    application.add_handler(CommandHandler("ask_ai", handle_ai))
-    application.add_handler(CommandHandler("generate_photo", handle_generate_photo))
+    application.add_handler(CommandHandler("ask_helper", handle_ai_response))
+    application.add_handler(CommandHandler("generate_image", handle_image_generation))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     application.add_error_handler(error_handler)
 
-    while True:
-        try:
-            await application.initialize()
-            await application.start()
-            logger.info("Бот успешно запущен!")
-            await application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
-        except (TimedOut, NetworkError) as e:
-            logger.error(f"Ошибка сети: {e}. Повторная попытка через 10 секунд...")
-            await asyncio.sleep(10)
-        except RetryAfter as e:
-            logger.error(f"Превышен лимит запросов. Ожидание {e.retry_after} секунд...")
-            await asyncio.sleep(e.retry_after)
-        except Exception as e:
-            logger.exception(f"Критическая ошибка: {e}. Повторная попытка через 30 секунд...")
-            await asyncio.sleep(30)
-        finally:
-            try:
-                # Проверяем, запущено ли приложение перед попыткой остановки
-                if application.running:
-                    await application.stop()
-                    await application.shutdown()
-                    logger.info("Бот успешно остановлен.")
-            except Exception as e:
-                logger.error(f"Ошибка при остановке бота: {e}")
+    # Запускаем бот
+    await application.initialize()
+    await application.start()
+    logger.info("Бот запущен")
+    await application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("Бот остановлен пользователем")
-    except Exception as e:
-        logger.exception(f"Критическая ошибка: {e}")
+    asyncio.run(main())
