@@ -63,7 +63,8 @@ async def generate_photo_command(message: types.Message, state: FSMContext):
     await generate_image_prompt(message)
 
 @dp.message_handler(lambda message: message.text == "Задать вопрос спикеру")
-async def ask_speaker(message: types.Message):
+async def ask_speaker(message: types.Message, state: FSMContext):
+    await state.finish()  # Завершаем текущее состояние
     logger.info(f"Получена команда 'Задать вопрос спикеру' от {message.from_user.id}")
     await message.reply("Выберите зал, в котором вы находитесь:", reply_markup=hall_keyboard)
     await BotStates.WAITING_FOR_HALL.set()
@@ -108,7 +109,8 @@ async def send_question_to_django(message: types.Message, state: FSMContext):
     await message.reply("Выберите следующее действие:", reply_markup=main_keyboard)
 
 @dp.message_handler(lambda message: message.text == "Задать вопрос помощнику")
-async def ask_ai(message: types.Message):
+async def ask_ai(message: types.Message, state: FSMContext):
+    await state.finish()  # Завершаем текущее состояние
     logger.info(f"Получена команда 'Задать вопрос помощнику' от {message.from_user.id}")
     await message.reply("Введите свой вопрос для помощника (ИИ)")
     await BotStates.WAITING_FOR_AI_QUESTION.set()
@@ -152,7 +154,8 @@ async def handle_ai_response(message: types.Message, state: FSMContext):
     await message.reply("Выберите следующее действие:", reply_markup=main_keyboard)
 
 @dp.message_handler(lambda message: message.text == "Генерировать черно-белое изображение")
-async def generate_image_prompt(message: types.Message):
+async def generate_image_prompt(message: types.Message, state: FSMContext):
+    await state.finish()  # Завершаем текущее состояние
     logger.info(f"Получена команда 'Генерировать черно-белое изображение' от {message.from_user.id}")
     await message.reply("Введите описание для генерации черно-белого изображения")
     await BotStates.WAITING_FOR_IMAGE_PROMPT.set()
@@ -195,7 +198,8 @@ async def handle_image_generation(message: types.Message, state: FSMContext):
     await message.reply("Выберите следующее действие:", reply_markup=main_keyboard)
 
 @dp.message_handler(lambda message: message.text == "Играть в игру")
-async def play_game(message: types.Message):
+async def play_game(message: types.Message, state: FSMContext):
+    await state.finish()  # Завершаем текущее состояние
     logger.info(f"Получена команда 'Играть в игру' от {message.from_user.id}")
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("Играть в Skipper", url=GAME_URL))
