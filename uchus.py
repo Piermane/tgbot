@@ -237,6 +237,7 @@ async def main() -> None:
         try:
             await application.initialize()
             await application.start()
+            logger.info("Бот успешно запущен!")
             await application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
         except (TimedOut, NetworkError) as e:
             logger.error(f"Ошибка сети: {e}. Повторная попытка через 10 секунд...")
@@ -248,8 +249,14 @@ async def main() -> None:
             logger.exception(f"Критическая ошибка: {e}. Повторная попытка через 30 секунд...")
             await asyncio.sleep(30)
         finally:
-            await application.stop()
-            await application.shutdown()
+            try:
+                # Проверяем, запущено ли приложение перед попыткой остановки
+                if application.running:
+                    await application.stop()
+                    await application.shutdown()
+                    logger.info("Бот успешно остановлен.")
+            except Exception as e:
+                logger.error(f"Ошибка при остановке бота: {e}")
 
 if __name__ == '__main__':
     try:
