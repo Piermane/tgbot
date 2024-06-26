@@ -51,26 +51,26 @@ async def cancel_current_state(message: types.Message, state: FSMContext):
 
     # Выполнение соответствующей команды после завершения состояния
     if message.text == "/ask_ai":
-        await ask_ai_command(message)
+        await ask_ai_command(message, state)
     elif message.text == "/ask_speaker":
-        await ask_speaker_command(message)
+        await ask_speaker_command(message, state)
     elif message.text == "/generate_photo":
-        await generate_photo_command(message)
+        await generate_photo_command(message, state)
 
 @dp.message_handler(commands=['ask_ai'])
-async def ask_ai_command(message: types.Message):
+async def ask_ai_command(message: types.Message, state: FSMContext):
     logger.info(f"Получена команда /ask_ai от {message.from_user.id}")
-    await ask_ai(message)
+    await ask_ai(message, state)
 
 @dp.message_handler(commands=['ask_speaker'])
-async def ask_speaker_command(message: types.Message):
+async def ask_speaker_command(message: types.Message, state: FSMContext):
     logger.info(f"Получена команда /ask_speaker от {message.from_user.id}")
-    await ask_speaker(message)
+    await ask_speaker(message, state)
 
 @dp.message_handler(commands=['generate_photo'])
-async def generate_photo_command(message: types.Message):
+async def generate_photo_command(message: types.Message, state: FSMContext):
     logger.info(f"Получена команда /generate_photo от {message.from_user.id}")
-    await generate_image_prompt(message)
+    await generate_image_prompt(message, state)
 
 @dp.message_handler(lambda message: message.text == "Задать вопрос спикеру")
 async def ask_speaker(message: types.Message, state: FSMContext):
