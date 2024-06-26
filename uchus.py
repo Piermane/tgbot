@@ -49,6 +49,14 @@ async def cancel_current_state(message: types.Message, state: FSMContext):
     logger.info(f"Команда {message.text} получена, завершаем текущее состояние")
     await state.finish()
 
+    # Выполнение соответствующей команды после завершения состояния
+    if message.text == "/ask_ai":
+        await ask_ai_command(message)
+    elif message.text == "/ask_speaker":
+        await ask_speaker_command(message)
+    elif message.text == "/generate_photo":
+        await generate_photo_command(message)
+
 @dp.message_handler(commands=['ask_ai'])
 async def ask_ai_command(message: types.Message):
     logger.info(f"Получена команда /ask_ai от {message.from_user.id}")
