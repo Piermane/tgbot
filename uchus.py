@@ -46,9 +46,9 @@ async def cmd_start(message: types.Message):
 
 @dp.message_handler(lambda message: message.text in ["Задать вопрос спикеру", "Задать вопрос помощнику", "Генерировать черно-белое изображение", "Играть в игру"], state="*")
 async def handle_menu_commands(message: types.Message, state: FSMContext):
-    logger.info(f"Получена команда {message.text}, завершаем текущее состояние")
+    logger.info(f"Получена команда {message.text} от {message.from_user.id}, завершаем текущее состояние")
     await state.finish()
-    await message.reply(reply_markup=ReplyKeyboardRemove())  # скрываем клавиатуру
+    await message.reply("Выберите действие:", reply_markup=ReplyKeyboardRemove())  # скрываем клавиатуру
 
     # Выполнение соответствующей команды после завершения состояния
     if message.text == "Задать вопрос спикеру":
@@ -200,13 +200,10 @@ async def play_game(message: types.Message):
     await message.reply("Нажмите кнопку ниже, чтобы играть в игру:", reply_markup=keyboard)
 
 async def main():
-    while True:
-        try:
-            await dp.start_polling()
-        except Exception as e:
-            logger.error(f"Произошла ошибка: {e}. Перезапуск через 5 секунд...")
-            await asyncio.sleep(5)
+    try:
+        await dp.start_polling()
+    except Exception as e:
+        logger.error(f"Произошла ошибка: {e}")
 
-if __name__ == '__':
+if __name__ == '__main__':
     asyncio.run(main())
-    
